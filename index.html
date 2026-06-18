@@ -497,10 +497,6 @@ header {
 .generating .spinner { width: 36px; height: 36px; margin: 0 auto 16px; border-width: 3px; }
 .generating p { color: var(--text-mid); font-size: 15px; }
 
-.settings-note {
-  font-size: 13px; color: var(--text-light);
-  margin-top: 8px; line-height: 1.5;
-}
 </style>
 </head>
 <body>
@@ -515,7 +511,6 @@ header {
     </div>
   </div>
   <div class="header-actions">
-    <button class="btn-settings" onclick="openSettings()" title="Settings">⚙️</button>
     <button class="btn-add" onclick="openAddRecipe()">+ Add Recipe</button>
   </div>
 </header>
@@ -648,24 +643,6 @@ header {
   <div class="modal" id="detail-content"></div>
 </div>
 
-<!-- ══════════════════════ SETTINGS MODAL ══════════════════════ -->
-<div class="modal-overlay" id="settings-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 class="modal-title">Settings</h2>
-      <button class="btn-close" onclick="closeSettings()">×</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Claude API Key</label>
-      <input class="form-input" type="password" id="api-key-input" placeholder="sk-ant-...">
-      <p class="settings-note">
-        Required for: smart grocery list, AI suggestions, and URL import.<br>
-        Get yours free at <strong>console.anthropic.com</strong>
-      </p>
-    </div>
-    <button class="btn-submit" onclick="saveSettings()">Save</button>
-  </div>
-</div>
 
 <!-- ══════════════════════ NOTIFICATION ══════════════════════ -->
 <div class="notification" id="notification"></div>
@@ -718,7 +695,6 @@ let groceryList     = JSON.parse(localStorage.getItem('mep-grocery')  || 'null')
 let checkedItems    = new Set(JSON.parse(localStorage.getItem('mep-checked')  || '[]'));
 let activeFilter    = 'all';
 let activeTagFilter = null;
-let apiKey          = localStorage.getItem('mep-api-key') || '';
 let _selectedTags   = [];   // tags selected in the add/edit form
 
 // ─────────────────────────────────────────
@@ -1187,7 +1163,6 @@ function parseDuration(iso) {
 async function importFromText() {
   const text = document.getElementById('import-text').value.trim();
   if (!text) { notify('Please paste some recipe text first', true); return; }
-  if (!apiKey) { notify('Add your API key in Settings ⚙️ first', true); return; }
   document.getElementById('import-loading').style.display = 'block';
   await parseWithClaude(text);
   document.getElementById('import-loading').style.display = 'none';
@@ -1310,12 +1285,6 @@ function toggleCheck(key) {
 }
 
 async function generateGroceryList() {
-  if (!apiKey) {
-    notify('Add your API key in Settings ⚙️ first', true);
-    openSettings();
-    return;
-  }
-
   const selected = [...selectedIds].map(id => recipes.find(r => r.id === id)).filter(Boolean);
   if (!selected.length) return;
 
@@ -1407,7 +1376,6 @@ function clearGrocery() {
 // DISCOVER
 // ─────────────────────────────────────────
 async function discoverRecipes() {
-  if (!apiKey) { notify('Add your API key in Settings ⚙️ first', true); openSettings(); return; }
   const prompt = document.getElementById('discover-prompt').value.trim();
   if (!prompt) { notify("Tell me what you're in the mood for!", true); return; }
 
@@ -1536,10 +1504,6 @@ async function callClaude(prompt) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-client': 'true',
-      'anthropic-beta': 'direct-browser-client',
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
@@ -1560,21 +1524,6 @@ async function callClaude(prompt) {
   }
   const data = await res.json();
   return data.content[0].text;
-}
-
-// ─────────────────────────────────────────
-// SETTINGS
-// ─────────────────────────────────────────
-function openSettings() {
-  document.getElementById('api-key-input').value = apiKey;
-  document.getElementById('settings-modal').classList.add('open');
-}
-function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
-function saveSettings() {
-  apiKey = document.getElementById('api-key-input').value.trim();
-  localStorage.setItem('mep-api-key', apiKey);
-  closeSettings();
-  notify('Settings saved ✓');
 }
 
 // ─────────────────────────────────────────
